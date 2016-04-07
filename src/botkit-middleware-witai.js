@@ -13,16 +13,28 @@ module.exports = function(config) {
     var middleware = {};
 
     middleware.receive = function(bot, message, next) {
-        if (message.text) {
+        /*
+         * hack, filter messages by sender
+         * solves the problem when send messages from bot into wit
+         * TODO: find a way to do it in common style
+         * TODO: find a way to add filter for strip text from slack-style mentions, text preprocessing, etc
+         * @vponomarev
+         */
+        if (message.text && (message.user != bot.identity.id)) {
             wit.captureTextIntent(config.token, message.text, function(err, res) {
                 if (err) {
                     next(err);
                 } else {
+                    // sort in descending order of confidence so the most likely match is first.
                     console.log(JSON.stringify(res));
-                    message.intents = res.outcomes;
+                    message.intents = res.outcomes.sort(function(a,b) {
+                        return b.confidence - a.confidence;
+                    });
                     next();
                 }
             });
+        } else {
+            next();
         }
 
     };
